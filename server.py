@@ -13,12 +13,34 @@ sock.bind((HOST, PORT)) # Claim messages sent to port "PORT"
 sock.listen(1) # Enable server to receive 1 connection at a time
 print('Server: ', sock.getsockname()) # Source IP and port
 
+new_dict = {}
 while True:
     sc, sockname = sock.accept() # Wait until a connection is established
     print('Client:', sc.getpeername()) # Destination IP and port
     t = sc.recv(BUF_SIZE) # recvfrom not needed since address is known
-    if t[ -1 ] == b'\n' and len(t) <= 171:
-    	print(t)
-    	sc.sendall(b'Received ' + t + b'\n') # Destiantion IP and port implicit due to accept call
-    	sc.close() # Termination
+    
+    command = t[:3]
+    alphaNumKey = t[3:11]
+    message = t[11:].strip()
+   
+    print(alphaNumKey,command, message)
+
+    try:
+        if t[ -1] == 10 and len(t) <= 171:
+            if command == b'PUT':
+                if len(alphaNumKey) < 8 or len(message) < 1:
+                    sc.sendall(b'NO')
+                else:
+                    new_dict[alphaNumKey] = message
+                    sc.sendall(b'OK\n')
+            elif command == b'GET':
+                if len(alphaNumKey) < 8 or len(message) > 0:
+                    sc.sendall(b'')
+                else:
+                    sc.sendall(new_dict.get(alphaNumKey) + b'\n')
+    
+    except Exception as error:
+       print(error)
+    sc.close() # Termination
+
 
