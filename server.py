@@ -4,7 +4,7 @@ import socket
 import sys
 
 BUF_SIZE = 1024
-HOST = '127.0.0.1'
+HOST = ''
 PORT = 12345
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # TCP socket
@@ -20,25 +20,30 @@ while True:
     t = sc.recv(BUF_SIZE) # recvfrom not needed since address is known
     
     command = t[:3]
-    alphaNumKey = t[3:11]
-    message = t[11:].strip()
+    alphaNumKey = t[3:11].decode().strip()
+    message = t[11:].decode().strip()
    
-    print(alphaNumKey,command, message)
+    print(alphaNumKey,command, message, len(message), len(alphaNumKey))
 
     try:
-        if t[ -1] == 10 and len(t) <= 171:
+        if  len(message) <= 160:
             if command == b'PUT':
                 if len(alphaNumKey) < 8 or len(message) < 1:
-                    sc.sendall(b'NO')
+                    sc.sendall(b'NO\n')
                 else:
                     new_dict[alphaNumKey] = message
                     sc.sendall(b'OK\n')
             elif command == b'GET':
-                if len(alphaNumKey) < 8 or len(message) > 0:
-                    sc.sendall(b'')
+                if (len(alphaNumKey) < 8) or (len(message) > 0):
+                    sc.sendall(b'\n')
+                elif alphaNumKey in new_dict:
+                    sc.sendall(new_dict.get(alphaNumKey).encode() + b'\n')
                 else:
-                    sc.sendall(new_dict.get(alphaNumKey) + b'\n')
-    
+                    sc.sendall(b'\n')
+            elif command != b'GET' and command != b'PUT':
+                sc.sendall(b'NO\n')
+        else:
+            sc.sendall(b'NO\n')
     except Exception as error:
        print(error)
     sc.close() # Termination

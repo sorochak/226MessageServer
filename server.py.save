@@ -1,0 +1,87 @@
+
+#!/usr/bin/python3
+
+import socket
+import sys
+
+BUF_SIZE = 1024
+HOST = '127.0.0.1'
+PORT = 12345
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # TCP socket
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+sock.bind((HOST, PORT)) # Claim messages sent to port "PORT"
+sock.listen(1) # Enable server to receive 1 connection at a time
+print('Server: ', sock.getsockname()) # Source IP and port
+
+while True:
+    sc, sockname = sock.accept() # Wait until a connection is established
+    print('Client:', sc.getpeername()) # Destination IP and port
+    t = sc.recv(BUF_SIZE) # recvfrom not needed since address is known
+
+    command = t[:3]
+    alphaNumKey = t[3:11]
+    message = t[11:]
+    new_dict = {}
+
+    try:
+        if t[ -1] == 10 and len(t) <= 171:
+            if command == 'PUT':
+                if len(alphaNumKey) < 8:
+                    raise Exception('NO')
+                else:
+                    new_dict[alphaNumKey] = message
+                    sc.sendall(b'OK\n')
+            elif command == 'GET':
+                if len(alphaNumKey) < 8:
+                    raise Exception('\n')
+                else:
+                    sc.sendall(new_dict.get(alphaNumKey).encode('utf-8') + b'\n')
+
+    except Exception as error:
+       # sc.sendall(error)
+#!/usr/bin/python3
+
+import socket
+import sys
+
+BUF_SIZE = 1024
+HOST = '127.0.0.1'
+PORT = 12345
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # TCP socket
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+sock.bind((HOST, PORT)) # Claim messages sent to port "PORT"
+sock.listen(1) # Enable server to receive 1 connection at a time
+print('Server: ', sock.getsockname()) # Source IP and port
+
+while True:
+    sc, sockname = sock.accept() # Wait until a connection is established
+    print('Client:', sc.getpeername()) # Destination IP and port
+    t = sc.recv(BUF_SIZE) # recvfrom not needed since address is known
+    
+    command = t[:3]
+    alphaNumKey = t[3:11]
+    message = t[11:]
+    new_dict = {}
+    
+    try:
+        if t[ -1] == 10 and len(t) <= 171:
+            if command == 'PUT':
+                if len(alphaNumKey) < 8:
+                    raise Exception('NO')
+                else:
+                    new_dict[alphaNumKey] = message
+                    sc.sendall(b'OK\n')
+            elif command == 'GET':
+                if len(alphaNumKey) < 8:
+                    raise Exception('\n')
+                else:
+                    sc.sendall(new_dict.get(alphaNumKey).encode('utf-8') + b'\n')
+    
+    except Exception as error:
+       # sc.sendall(error)
+       print(error)
+    sc.close() # Termination
+
+
