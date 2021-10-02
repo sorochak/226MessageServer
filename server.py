@@ -6,14 +6,78 @@ import sys
 BUF_SIZE = 1024
 HOST = ''
 PORT = 12345
+msg_dict = {}
+KEYLENGTH = 8
+MSGMAXLENGTH = 160
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # TCP socket
-sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-sock.bind((HOST, PORT)) # Claim messages sent to port "PORT"
-sock.listen(1) # Enable server to receive 1 connection at a time
-print('Server: ', sock.getsockname()) # Source IP and port
+#
+# PURPOSE:
+# converts a message to binary before sending
+#
+# PARAMETERS:
+# 'msg' contains the message received from the command
 
-new_dict = {}
+def sendResponse(msg):
+    sc.sendall(msg.encode())
+
+#
+# PURPOSE:
+# sets up a TCP message server
+#
+# RETURN:
+# returns TCP socket
+
+def serverSetup():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # TCP socket
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind((HOST, PORT)) # Claim messages sent to port "PORT"
+    sock.listen(1) # Enable server to receive 1 connection at a time
+    print('Server: ', sock.getsockname()) # Source IP and port
+    return sock
+
+#
+# PURPOSE:
+# validates key length and message length
+# and stores message in a dictionary
+# and sends appropriate response based on actions taken
+#
+# PARAMETERS:
+# 'key' contains an alphanumeric key
+# 'keyL' contains the constant KEYLENGTH
+# 'msg' contains the message
+#
+# SIDE EFFECTS:
+# 'msg_dict' dictionary is updated to store the key and message
+#
+
+def putCommand(key, keyL, msg):
+    if len(key) < keyL or len(msg) < 1:
+        sendResponse('NO\n')
+    else:
+        msg_dict[key] = msg
+        sendResponse('OK\n')
+
+#
+# PURPOSE:
+# validates key length and message length
+# sends message based on the provided key
+# and sends the appropriate response based on actions taken
+#
+# PARAMETERS:
+# 'key' contains an alphanumeric key
+# 'keyL' contains the constant KEYLENGTH
+# 'msg' contains the message
+
+def getCommand(key, keyL, msg):
+    if (len(key) < keyL) or (len(msg) > 0):
+        sendResponse('\n')
+    elif key in msg_dict:
+        sendResponse(msg_dict.get(key) + '\n')
+    else:
+        sendResponse('\n')
+
+sock = serverSetup()
+
 while True:
     sc, sockname = sock.accept() # Wait until a connection is established
     print('Client:', sc.getpeername()) # Destination IP and port
@@ -22,28 +86,17 @@ while True:
     command = t[:3]
     alphaNumKey = t[3:11].decode().strip()
     message = t[11:].decode().strip()
-   
-    print(alphaNumKey,command, message, len(message), len(alphaNumKey))
 
     try:
-        if  len(message) <= 160:
+        if  len(message) <= MSGMAXLENGTH:
             if command == b'PUT':
-                if len(alphaNumKey) < 8 or len(message) < 1:
-                    sc.sendall(b'NO\n')
-                else:
-                    new_dict[alphaNumKey] = message
-                    sc.sendall(b'OK\n')
+                putCommand(alphaNumKey, KEYLENGTH, message)
             elif command == b'GET':
-                if (len(alphaNumKey) < 8) or (len(message) > 0):
-                    sc.sendall(b'\n')
-                elif alphaNumKey in new_dict:
-                    sc.sendall(new_dict.get(alphaNumKey).encode() + b'\n')
-                else:
-                    sc.sendall(b'\n')
+                getCommand(alphaNumKey, KEYLENGTH, message)
             elif command != b'GET' and command != b'PUT':
-                sc.sendall(b'NO\n')
+                sendResponse('NO\n')
         else:
-            sc.sendall(b'NO\n')
+            sendResponse('NO\n')
     except Exception as error:
        print(error)
     sc.close() # Termination
