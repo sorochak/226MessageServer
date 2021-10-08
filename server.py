@@ -2,6 +2,8 @@
 
 import socket
 import sys
+import threading
+import traceback
 
 BUF_SIZE = 1024
 HOST = ''
@@ -11,6 +13,9 @@ KEYLENGTH = 8
 MSGMAXLENGTH = 160
 CMD_LENGTH = 3
 MSG_INDEX = 11
+
+locks = threading.Semaphore()
+
 #
 # PURPOSE:
 # converts a message to binary before sending
@@ -18,7 +23,7 @@ MSG_INDEX = 11
 # PARAMETERS:
 # 'msg' contains the message received from the command
 
-def sendResponse(msg):
+def sendResponse(msg, sc):
     sc.sendall(msg.encode())
 
 #
@@ -51,12 +56,14 @@ def serverSetup():
 # 'msg_dict' dictionary is updated to store the key and message
 #
 
-def putCommand(key, msg):
+def putCommand(key, msg, sc):
     if len(key) < KEYLENGTH or len(msg) < 1:
-        sendResponse('NO\n')
+        sendResponse('NO\n', sc)
     else:
+        locks.acquire()
         msg_dict[key] = msg
-        sendResponse('OK\n')
+        locks.release()
+        sendResponse('OK\n', sc)
 
 #
 # PURPOSE:
@@ -69,21 +76,30 @@ def putCommand(key, msg):
 # 'keyL' contains the constant KEYLENGTH
 # 'msg' contains the message
 
-def getCommand(key, msg):
+def getCommand(key, msg, sc):
     if (len(key) < KEYLENGTH) or (len(msg) > 0):
-        sendResponse('\n')
+        sendResponse('\n', sc)
     elif key in msg_dict:
-        sendResponse(msg_dict.get(key) + '\n')
+        locks.acquire()
+        sendResponse(msg_dict.get(key) + '\n', sc)
+        locks.release()
     else:
-        sendResponse('\n')
+        sendResponse('\n', sc)
 
 sock = serverSetup()
 
-while True:
-    sc, sockname = sock.accept() # Wait until a connection is established
-    print('Client:', sc.getpeername()) # Destination IP and port
-    t = sc.recv(BUF_SIZE) # recvfrom not needed since address is known
-    
+def get_line(sc):
+    buffer = b''
+    size = 0
+    while True:
+        data = sc.recv(1)
+        size += 1
+        if data == b'\n' or size >= BUF_SIZE:
+            return buffer
+        buffer = buffer + data
+
+def process_command(sc, current_socket):
+    t = get_line(sc)
     command = t[:CMD_LENGTH]
     alphaNumKey = t[CMD_LENGTH:MSG_INDEX].decode().strip()
     message = t[MSG_INDEX:].decode().strip()
@@ -91,15 +107,21 @@ while True:
     try:
         if  len(message) <= MSGMAXLENGTH:
             if command == b'PUT':
-                putCommand(alphaNumKey, KEYLENGTH, message)
+                putCommand(alphaNumKey, message, sc)
             elif command == b'GET':
-                getCommand(alphaNumKey, KEYLENGTH, message)
+                getCommand(alphaNumKey, message, sc)
             elif command != b'GET' and command != b'PUT':
-                sendResponse('NO\n')
+                sendResponse('NO\n', sc)
         else:
-            sendResponse('NO\n')
+            sendResponse('NO\n', sc)
     except Exception as error:
        print(error)
+       traceback.print_exc()
     sc.close() # Termination
+
+while True:
+    sc, sockname = sock.accept() # Wait until a connection is established
+    print('Client:', sc.getpeername()) # Destination IP and port
+    threading.Thread(target = process_command, args = (sc, sock, )).start()
 
 
