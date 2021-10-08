@@ -9,7 +9,8 @@ PORT = 12345
 msg_dict = {}
 KEYLENGTH = 8
 MSGMAXLENGTH = 160
-
+CMD_LENGTH = 3
+MSG_INDEX = 11
 #
 # PURPOSE:
 # converts a message to binary before sending
@@ -50,8 +51,8 @@ def serverSetup():
 # 'msg_dict' dictionary is updated to store the key and message
 #
 
-def putCommand(key, keyL, msg):
-    if len(key) < keyL or len(msg) < 1:
+def putCommand(key, msg):
+    if len(key) < KEYLENGTH or len(msg) < 1:
         sendResponse('NO\n')
     else:
         msg_dict[key] = msg
@@ -68,8 +69,8 @@ def putCommand(key, keyL, msg):
 # 'keyL' contains the constant KEYLENGTH
 # 'msg' contains the message
 
-def getCommand(key, keyL, msg):
-    if (len(key) < keyL) or (len(msg) > 0):
+def getCommand(key, msg):
+    if (len(key) < KEYLENGTH) or (len(msg) > 0):
         sendResponse('\n')
     elif key in msg_dict:
         sendResponse(msg_dict.get(key) + '\n')
@@ -83,9 +84,9 @@ while True:
     print('Client:', sc.getpeername()) # Destination IP and port
     t = sc.recv(BUF_SIZE) # recvfrom not needed since address is known
     
-    command = t[:3]
-    alphaNumKey = t[3:11].decode().strip()
-    message = t[11:].decode().strip()
+    command = t[:CMD_LENGTH]
+    alphaNumKey = t[CMD_LENGTH:MSG_INDEX].decode().strip()
+    message = t[MSG_INDEX:].decode().strip()
 
     try:
         if  len(message) <= MSGMAXLENGTH:
