@@ -22,6 +22,7 @@ locks = threading.Semaphore()
 #
 # PARAMETERS:
 # 'msg' contains the message received from the command
+# 'sc' contains a valid server socket
 
 def sendResponse(msg, sc):
     sc.sendall(msg.encode())
@@ -45,12 +46,13 @@ def serverSetup():
 # PURPOSE:
 # validates key length and message length
 # and stores message in a dictionary
-# and sends appropriate response based on actions taken
+# Sends 'NO\n' message if key length is less than KEYLENGTH or if length of msg is < 1
+# 
 #
 # PARAMETERS:
 # 'key' contains an alphanumeric key
-# 'keyL' contains the constant KEYLENGTH
 # 'msg' contains the message
+# 'sc' contains a valid server socket
 #
 # SIDE EFFECTS:
 # 'msg_dict' dictionary is updated to store the key and message
@@ -61,7 +63,6 @@ def putCommand(key, msg, sc):
         sendResponse('NO\n', sc)
     else:
         locks.acquire()
-        print(key,msg)
         msg_dict[key] = msg
         locks.release()
         sendResponse('OK\n', sc)
@@ -74,8 +75,8 @@ def putCommand(key, msg, sc):
 #
 # PARAMETERS:
 # 'key' contains an alphanumeric key
-# 'keyL' contains the constant KEYLENGTH
 # 'msg' contains the message
+# 'sc' contains a valid server socket
 
 def getCommand(key, msg, sc):
     if (len(key) < KEYLENGTH) or (len(msg) > 0):
@@ -90,6 +91,23 @@ def getCommand(key, msg, sc):
 
 sock = serverSetup()
 
+
+#
+# PURPOSE:
+# Given a valid socket connection, reads in bytes from the connection until
+# either a newline is encountered of BUF_SIZE characters have been read,
+# whichever occurs first
+#
+# PARAMETERS:
+# 'sc' contains a valid server socket
+#
+# RETURN/SIDE EFFECTS:
+# Returns the bytes that have been read in
+#
+# NOTES:
+# No connection errors are handled
+#
+
 def get_line(sc):
     buffer = b''
     size = 0
@@ -100,7 +118,22 @@ def get_line(sc):
             return buffer
         buffer = buffer + data
 
-def process_command(sc, current_socket):
+#
+# PURPOSE:
+# Given a valid server socket, gets a line from the socket,
+# extracts a command, key, and message.
+# if PUT command is received, calls putCommand()
+# if GET command is received, calls getCommand()
+# if neither PUT or GET is received sends 'NO\n' response
+#
+# PARAMETERS:
+# 'sc' contains a valid server socket
+#
+# NOTES:
+# Connection errors are handled
+#
+
+def process_command(sc):
     t = get_line(sc)
     command = t[:CMD_LENGTH]
     alphaNumKey = t[CMD_LENGTH:MSG_INDEX].decode().strip()
@@ -124,6 +157,6 @@ def process_command(sc, current_socket):
 while True:
     sc, sockname = sock.accept() # Wait until a connection is established
     print('Client:', sc.getpeername()) # Destination IP and port
-    threading.Thread(target = process_command, args = (sc, sock, )).start()
+    threading.Thread(target = process_command, args = (sc, )).start()
 
 
