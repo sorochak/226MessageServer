@@ -61,6 +61,7 @@ def putCommand(key, msg, sc):
         sendResponse('NO\n', sc)
     else:
         locks.acquire()
+        print(key,msg)
         msg_dict[key] = msg
         locks.release()
         sendResponse('OK\n', sc)
@@ -81,6 +82,7 @@ def getCommand(key, msg, sc):
         sendResponse('\n', sc)
     elif key in msg_dict:
         locks.acquire()
+        print('get', key, msg_dict.get(key))
         sendResponse(msg_dict.get(key) + '\n', sc)
         locks.release()
     else:

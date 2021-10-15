@@ -24,7 +24,7 @@ def stop_container():
     cmd = subprocess.run(['sudo', 'docker', 'rm', '226-message-server'], capture_output=True)
     print(cmd)
 
-def setup_module(module):
+def xsetup_module(module):
     stop_container()
     cmd = subprocess.run(['sudo', 'docker', 'build', '-t', '226-message-server', '.'], capture_output=True)
     print(cmd)
@@ -33,7 +33,7 @@ def setup_module(module):
     time.sleep(5) # Ugly; should properly detect when the container is up and running
     print('\n\n')
 
-def teardown_module(module):
+def xteardown_module(module):
     stop_container()
     print('\n\n')
 
@@ -127,7 +127,7 @@ def send_put_msg(sock, num):
     msg = ''
     while len(msg) < MSG_SIZE:
         msg = msg + str(random.randint(0, 9))
-
+    print('PUT', key, msg)
     sock.sendall((PUT_CMD + key + msg + '\n').encode('utf-8'))
     assert get_line(sock) == b'OK'
 
@@ -141,7 +141,7 @@ def send_get_msg(sock, num, key, msg):
     print('Client', num, 'sending', GET_CMD, key)
     sock.sendall((GET_CMD + key + '\n').encode('utf-8'))
     data = get_line(sock)
-    print(key, data, 'done')
+    print(key, data, 'done', num)
     assert msg.encode('utf-8') == data
 
 def test_multisession():
@@ -168,7 +168,7 @@ def send_individually(s, sock):
         sock.sendall(str(c).encode('utf-8'))
     return get_line(sock)
 
-def test_fragmentation():
+def test_fragmented():
     sock = setup_cnx(-1)
     fragmented_put_cmd = 'PUTabcdefghThis is a test\nX'
     assert send_individually(fragmented_put_cmd, sock) == b'OK'
