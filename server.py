@@ -1,9 +1,8 @@
 #!/usr/bin/python3
 
-import socket
 import sys
-import threading
 import traceback
+import asyncio
 
 BUF_SIZE = 1024
 HOST = ''
@@ -13,34 +12,16 @@ KEYLENGTH = 8
 MSGMAXLENGTH = 160
 CMD_LENGTH = 3
 MSG_INDEX = 11
+PUT_CMD = 'PUT'
+GET_CMD = 'GET'
+OK_MSG = b'OK\n'
+NO_MSG = b'NO\n'
+NEWLINE = b'\n'
 
-locks = threading.Semaphore()
 
-#
-# PURPOSE:
-# converts a message to binary before sending
-#
-# PARAMETERS:
-# 'msg' contains the message received from the command
-# 'sc' contains a valid server socket
+def sendResponse(s, writer):
+    writer.write(s)
 
-def sendResponse(msg, sc):
-    sc.sendall(msg.encode())
-
-#
-# PURPOSE:
-# sets up a TCP message server
-#
-# RETURN:
-# returns TCP socket
-
-def serverSetup():
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # TCP socket
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind((HOST, PORT)) # Claim messages sent to port "PORT"
-    sock.listen(1) # Enable server to receive 1 connection at a time
-    print('Server: ', sock.getsockname()) # Source IP and port
-    return sock
 
 #
 # PURPOSE:
@@ -58,14 +39,12 @@ def serverSetup():
 # 'msg_dict' dictionary is updated to store the key and message
 #
 
-def putCommand(key, msg, sc):
+def putCommand(key, msg, writer):
     if len(key) < KEYLENGTH or len(msg) < 1:
-        sendResponse('NO\n', sc)
+        sendResponse(NO_MSG, writer)
     else:
-        locks.acquire()
         msg_dict[key] = msg
-        locks.release()
-        sendResponse('OK\n', sc)
+        sendResponse(OK_MSG, writer)
 
 #
 # PURPOSE:
@@ -78,45 +57,15 @@ def putCommand(key, msg, sc):
 # 'msg' contains the message
 # 'sc' contains a valid server socket
 
-def getCommand(key, msg, sc):
+def getCommand(key, msg, writer):
     if (len(key) < KEYLENGTH) or (len(msg) > 0):
-        sendResponse('\n', sc)
+        sendResponse(NEWLINE, writer)
     elif key in msg_dict:
-        locks.acquire()
         print('get', key, msg_dict.get(key))
-        sendResponse(msg_dict.get(key) + '\n', sc)
-        locks.release()
+        sendResponse(msg_dict.get(key).encode() + NEWLINE, writer)
     else:
-        sendResponse('\n', sc)
+        sendResponse(NEWLINE, writer)
 
-sock = serverSetup()
-
-
-#
-# PURPOSE:
-# Given a valid socket connection, reads in bytes from the connection until
-# either a newline is encountered of BUF_SIZE characters have been read,
-# whichever occurs first
-#
-# PARAMETERS:
-# 'sc' contains a valid server socket
-#
-# RETURN/SIDE EFFECTS:
-# Returns the bytes that have been read in
-#
-# NOTES:
-# No connection errors are handled
-#
-
-def get_line(sc):
-    buffer = b''
-    size = 0
-    while True:
-        data = sc.recv(1)
-        size += 1
-        if data == b'\n' or size >= BUF_SIZE:
-            return buffer
-        buffer = buffer + data
 
 #
 # PURPOSE:
@@ -133,30 +82,33 @@ def get_line(sc):
 # Connection errors are handled
 #
 
-def process_command(sc):
-    t = get_line(sc)
+async def process_command(reader, writer):
+    d = await reader.readline()
+    t = d.decode('utf-8').strip()
     command = t[:CMD_LENGTH]
-    alphaNumKey = t[CMD_LENGTH:MSG_INDEX].decode().strip()
-    message = t[MSG_INDEX:].decode().strip()
+    alphaNumKey = t[CMD_LENGTH:MSG_INDEX]
+    message = t[MSG_INDEX:]
 
     try:
         if  len(message) <= MSGMAXLENGTH:
-            if command == b'PUT':
-                putCommand(alphaNumKey, message, sc)
-            elif command == b'GET':
-                getCommand(alphaNumKey, message, sc)
-            elif command != b'GET' and command != b'PUT':
-                sendResponse('NO\n', sc)
+            if command == PUT_CMD:
+                putCommand(alphaNumKey, message, writer)
+            elif command == GET_CMD:
+                getCommand(alphaNumKey, message, writer)
+            elif command != GET_CMD and command != PUT_CMD:
+                sendResponse(NO_MSG, writer)
         else:
-            sendResponse('NO\n', sc)
+            sendResponse(NO_MSG, writer)
     except Exception as error:
        print(error)
        traceback.print_exc()
-    sc.close() # Termination
+    writer.close()
+    await writer.wait_closed()
 
-while True:
-    sc, sockname = sock.accept() # Wait until a connection is established
-    print('Client:', sc.getpeername()) # Destination IP and port
-    threading.Thread(target = process_command, args = (sc, )).start()
+async def main():
+    server = await asyncio.start_server(process_command, '', 12345)
+    await server.serve_forever() # without this, program terminates
+
+asyncio.run(main())
 
 
