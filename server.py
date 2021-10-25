@@ -18,6 +18,13 @@ OK_MSG = b'OK\n'
 NO_MSG = b'NO\n'
 NEWLINE = b'\n'
 
+#
+# PURPOSE:
+# receives a string and writer object and writes data to the underlying socket immediately
+#
+# PARAMETERS:
+# 's' contains a string to be sent
+# 'writer' contains an instance of the StreamWriter class
 
 def sendResponse(s, writer):
     writer.write(s)
@@ -33,7 +40,7 @@ def sendResponse(s, writer):
 # PARAMETERS:
 # 'key' contains an alphanumeric key
 # 'msg' contains the message
-# 'sc' contains a valid server socket
+# 'writer' contains an instance of the StreamWriter class
 #
 # SIDE EFFECTS:
 # 'msg_dict' dictionary is updated to store the key and message
@@ -50,12 +57,12 @@ def putCommand(key, msg, writer):
 # PURPOSE:
 # validates key length and message length
 # sends message based on the provided key
-# and sends the appropriate response based on actions taken
+# Sends a new line character if the key length is less than KEYLENGTH or if a message is provided with the key
 #
 # PARAMETERS:
 # 'key' contains an alphanumeric key
 # 'msg' contains the message
-# 'sc' contains a valid server socket
+# 'writer' contains an instance of the StreamWriter class
 
 def getCommand(key, msg, writer):
     if (len(key) < KEYLENGTH) or (len(msg) > 0):
@@ -69,14 +76,15 @@ def getCommand(key, msg, writer):
 
 #
 # PURPOSE:
-# Given a valid server socket, gets a line from the socket,
+# Given valid reader and writer objects, reads in a line,
 # extracts a command, key, and message.
 # if PUT command is received, calls putCommand()
 # if GET command is received, calls getCommand()
 # if neither PUT or GET is received sends 'NO\n' response
 #
 # PARAMETERS:
-# 'sc' contains a valid server socket
+# 'reader' contains an instance of the StreamReader class
+# 'writer' contains an instance of the StreamWriter class
 #
 # NOTES:
 # Connection errors are handled
