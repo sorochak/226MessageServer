@@ -9,7 +9,7 @@ import time
 KEYLENGTH = 8
 PUT_CMD = 'PUT'
 GET_CMD = 'GET'
-PROMPT = 'Please Enter a Message'
+PROMPT = 'Please Enter a Message \n'
 
 def getRandKey():
     str = string.ascii_letters + string.digits
