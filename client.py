@@ -40,26 +40,25 @@ async def putMsg(key, message, reader, writer):
 async def client(host, port, key):
     
     try:
-        mostRecentKey = key
+        mostRecentKey = key.encode('utf-8')
         while True:
             reader, writer = await asyncio.open_connection(host, port)
-            writer.write(b'GET' + mostRecentKey.encode('utf-8') + b'\n')
+            writer.write(b'GET' + mostRecentKey + b'\n')
             data = await reader.readline()
-            print(data).encode()
-            if data != '\n':
+            print(data.decode())
+            if data != b'\n':
                 mostRecentKey = data[:KEYLENGTH]
+                print(mostRecentKey)
                 message = data[KEYLENGTH:]
                 #print(len(data))
             else:
                 newMsg = getUserMsg()
                 reader, writer = await asyncio.open_connection(host, port)
-                writer.write(b'PUT' + (mostRecentKey + getRandKey() + newMsg).encode('utf-8')+ b'\n')
+                writer.write(b'PUT' + mostRecentKey + (getRandKey() + newMsg).encode('utf-8')+ b'\n')
                 #await putMsg(key, getRandKey() + newMsg, reader, writer)
                 #print('test')
                 break
-            time.sleep(2)
-
- 
+           
     except Exception as error:
        print(error, 123)
     
@@ -70,4 +69,3 @@ if len(sys.argv) != 4:
     sys.exit(-1)
 
 asyncio.run(client(sys.argv[1], sys.argv[2], sys.argv[3]))
-
