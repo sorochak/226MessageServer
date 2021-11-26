@@ -12,7 +12,7 @@ GET_CMD = 'GET'
 PROMPT = 'Please Enter a Message'
 
 def getRandKey():
-    str = string.ascii_lowercase
+    str = string.ascii_letters + string.ascii_digits
     return ''.join(random.choice(str) for i in range(KEYLENGTH))
 
 def getUserMsg():
