@@ -5,7 +5,7 @@ import traceback
 import asyncio
 
 BUF_SIZE = 1024
-HOST = ''
+HOST = '::'
 PORT = 12345
 msg_dict = {}
 KEYLENGTH = 8
@@ -15,7 +15,7 @@ MSG_INDEX = 11
 PUT_CMD = 'PUT'
 GET_CMD = 'GET'
 OK_MSG = b'OK\n'
-NO_MSG = b'NO\n'
+NO_MSG = b'NO'
 NEWLINE = b'\n'
 
 #
@@ -26,8 +26,8 @@ NEWLINE = b'\n'
 # 's' contains a string to be sent
 # 'writer' contains an instance of the StreamWriter class
 
-def sendResponse(s, writer):
-    writer.write(s)
+#def sendResponse(s, writer):
+    #writer.write(s)
 
 
 #
@@ -46,12 +46,24 @@ def sendResponse(s, writer):
 # 'msg_dict' dictionary is updated to store the key and message
 #
 
-def putCommand(key, msg, writer):
+async def putCommand(key, msg, writer):
     if len(key) < KEYLENGTH or len(msg) < 1:
-        sendResponse(NO_MSG, writer)
+        writer.write(NO_MSG)
+        await writer.drain()
+        
+    elif key in msg_dict:
+        #print('elif' + ' ' + key + ' ' + msg)
+        #print(msg_dict.get(key))
+        #print(NO_MSG + msg_dict.get(key).encode())
+        writer.write(NO_MSG + msg_dict.get(key).encode())
+        await writer.drain()
+
     else:
         msg_dict[key] = msg
-        sendResponse(OK_MSG, writer)
+        print('else' + ' ' + key + ' ' + msg)
+        writer.write(OK_MSG)
+        await writer.drain()
+    print(msg_dict)
 
 #
 # PURPOSE:
@@ -64,14 +76,18 @@ def putCommand(key, msg, writer):
 # 'msg' contains the message
 # 'writer' contains an instance of the StreamWriter class
 
-def getCommand(key, msg, writer):
+async def getCommand(key, msg, writer):
     if (len(key) < KEYLENGTH) or (len(msg) > 0):
-        sendResponse(NEWLINE, writer)
+        writer.write(NEWLINE)
+        await writer.drain()
     elif key in msg_dict:
         print('get', key, msg_dict.get(key))
-        sendResponse(msg_dict.get(key).encode() + NEWLINE, writer)
+        writer.write(msg_dict.get(key).encode() + NEWLINE)
+        await writer.drain()
     else:
-        sendResponse(NEWLINE, writer)
+        writer.write(NEWLINE)
+        await writer.drain()
+    print(msg_dict)
 
 
 #
@@ -93,6 +109,7 @@ def getCommand(key, msg, writer):
 async def process_command(reader, writer):
     d = await reader.readline()
     t = d.decode('utf-8').strip()
+    print(t)
     command = t[:CMD_LENGTH]
     alphaNumKey = t[CMD_LENGTH:MSG_INDEX]
     message = t[MSG_INDEX:]
@@ -100,13 +117,15 @@ async def process_command(reader, writer):
     try:
         if  len(message) <= MSGMAXLENGTH:
             if command == PUT_CMD:
-                putCommand(alphaNumKey, message, writer)
+                await putCommand(alphaNumKey, message, writer)
             elif command == GET_CMD:
-                getCommand(alphaNumKey, message, writer)
+                await getCommand(alphaNumKey, message, writer)
             elif command != GET_CMD and command != PUT_CMD:
-                sendResponse(NO_MSG, writer)
+                writer.write(NO_MSG)
+                await writer.drain()
         else:
-            sendResponse(NO_MSG, writer)
+            writer.write(NO_MSG)
+            await writer.drain()
     except Exception as error:
        print(error)
        traceback.print_exc()
