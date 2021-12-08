@@ -20,18 +20,6 @@ NEWLINE = b'\n'
 
 #
 # PURPOSE:
-# receives a string and writer object and writes data to the underlying socket immediately
-#
-# PARAMETERS:
-# 's' contains a string to be sent
-# 'writer' contains an instance of the StreamWriter class
-
-#def sendResponse(s, writer):
-    #writer.write(s)
-
-
-#
-# PURPOSE:
 # validates key length and message length
 # and stores message in a dictionary
 # Sends 'NO\n' message if key length is less than KEYLENGTH or if length of msg is < 1
@@ -52,9 +40,6 @@ async def putCommand(key, msg, writer):
         await writer.drain()
         
     elif key in msg_dict:
-        #print('elif' + ' ' + key + ' ' + msg)
-        #print(msg_dict.get(key))
-        #print(NO_MSG + msg_dict.get(key).encode())
         writer.write(NO_MSG + msg_dict.get(key).encode())
         await writer.drain()
 
@@ -87,7 +72,7 @@ async def getCommand(key, msg, writer):
     else:
         writer.write(NEWLINE)
         await writer.drain()
-    print(msg_dict)
+    #print(msg_dict)
 
 
 #

@@ -11,105 +11,84 @@ KEYLENGTH = 8
 PUT_CMD = 'PUT'
 GET_CMD = 'GET'
 PROMPT = 'Please Enter a Message \n'
+NUM_ARGS = 4
+HOST_ARG = 1
+PORT_ARG = 2
+KEY_ARG = 3
+WAIT = 5
 
-# Global variable key
-mostRecentKey = ''
+# Global variables for keys
+nextGetKey = ''
+nextPutKey = ''
 
 def getRandKey():
     str = string.ascii_letters + string.digits
     return ''.join(random.choice(str) for i in range(KEYLENGTH))
 
-async def getUserMsg():
-    loop = asyncio.get_running_loop()
-    usrMessage = await loop.run_in_executor(None, input, PROMPT)
-    return usrMessage
+# async def getUserMsg():
+#     loop = asyncio.get_running_loop()
+#     usrMessage = await loop.run_in_executor(None, input, PROMPT)
+#     return usrMessage
 
 
 async def get_message():
-    global mostRecentKey
-    try:
-        mostRecentKey = sys.argv[3].encode('utf-8')
-        while(True):
-            reader, writer = await asyncio.open_connection(sys.argv[1], sys.argv[2])
-            writer.write(b'GET' + mostRecentKey + b'\n')
-            await writer.drain()
-            data = await reader.readline()
-            print(data.decode())
-            
-            if data == b'':
-                await asyncio.sleep(5)
-            else:
-                mostRecentKey = data[:KEYLENGTH]
-                message = data[KEYLENGTH:]
-                print(message)
-        
-    except Exception as error:
-        print(error, 123)
-    #message = GET_CMD + key + '\n'
-    #writer.write(message.encode())
-    #data = await reader.readline()
-    #data = data.decode()
-    #writer.close()
-    #await writer.wait_closed()
-    #return data
-
-async def put_message():
-    #try:
-    newKey = mostRecentKey
+    global nextGetKey, nextPutKey
+    
     while(True):
-        reader, writer = await asyncio.open_connection(sys.argv[1], sys.argv[2])
-        try:
-            newMsg = await getUserMsg()
-        except:
-            return
-        
-        writer.write(b'PUT' + newKey + (getRandKey() + newMsg).encode('utf-8') + b'\n')
-        await writer.drain()
-        data = await reader.readline()
-        print(data, 789, data[:2])
-        if data[:2] == b'NO':
-            print(data[2:])
-            newKey = data[2:10]
-            #writer.write(b'PUT' + newKey + (getRandKey() + newMsg).encode('utf-8') + b'\n')
-            
+        reader, writer = await asyncio.open_connection(host, port)
+        writer.write(b'GET' + nextGetKey + b'\n')
+        data = await reader.read()
+        #print(data.decode())
         writer.close()
         await writer.wait_closed()
-    
-    print(msg_dict)
         
-        #writer.write(b'PUT' + mostRecentKey.encode('utf-8') + (getRandKey() + newMsg).encode('utf-8') + b'\n')
-    
-    #except Exception as error:
-        #print(error, 123)
-    #sendMsg = PUT_CMD + key + '\n'
-    #writer.write(sendMsg.encode())
-    #serverResponse = await reader.readline()
-    #serverResponse = serverResponse.decode()
-    #writer.close()
-    #await writer.wait_closed()
+        if data == b'\n':
+            nextPutKey = nextGetKey
+            await asyncio.sleep(WAIT)
+            continue
 
-#async def client(host, port, key):
-    
-    #try:
-        #mostRecentKey = key.encode('utf-8')
-        #while True:
- 
-            #if data != b'\n':
-                #mostRecentKey = data[:KEYLENGTH]
-                #print(mostRecentKey)
-                #message = data[KEYLENGTH:]
-                #print(len(data))
-            #else:
-                #newMsg = getUserMsg()
-                #reader, writer = await asyncio.open_connection(host, port)
-                #writer.write(b'PUT' + mostRecentKey + (getRandKey() + newMsg).encode('utf-8')+ b'\n')
-                #await putMsg(key, getRandKey() + newMsg, reader, writer)
-                #print('test')
-                #break
-           
-    #except Exception as error:
-       #print(error, 123)
-       
+        if len(data) < KEYLENGTH:
+            print('**** Error', data)
+            break
+        
+        nextGetKey = data[:KEYLENGTH]
+        message = data[KEYLENGTH:]
+        print('             ', '>', message)
+
+async def put_message():
+    global nextPutKey
+
+    loop = asyncio.get_running_loop()
+
+    while True:
+        try:
+            nextMessage = await loop.run_in_executor(None, input, "<    ")
+            nextMessage = nextMessage.encode()
+        except Exception as e:
+            print(e)
+            break
+        
+        nextProposedKey = ''.join(random.choices(string.ascii_letters + string.digits, k = KEYLENGTH)).encode()
+        while True:
+            reader, writer = await asyncio.open_connection(host, port)
+            writer.write(b'PUT' + nextPutKey + nextProposedKey + nextMessage + b'\n')
+            data = await reader.read()
+            writer.close()
+            await writer.wait_closed()
+            #print('REPLY   ', data)
+
+            if data[:2] == b'OK':
+                print()
+                break
+            if data[:2] == b'NO':
+                nextPutKey = data[2:10]
+                continue
+            if len(data) < 10:
+                print('**** Size Error', data)
+                break
+            print('**** Unexpected Error', data)
+            break
+        
 
 async def main():
     try:
@@ -119,9 +98,13 @@ async def main():
         traceback.print_exc()
     
 
-
-if len(sys.argv) != 4:
+if len(sys.argv) != NUM_ARGS:
     print(f'{sys.argv[0]} needs 3 argument to transmit')
     sys.exit(-1)
 
+host = sys.argv[HOST_ARG]
+port = sys.argv[PORT_ARG]
+key = sys.argv[KEY_ARG]
+nextGetKey = key.encode('utf-8')
+nextPutKey = nextGetKey
 asyncio.run(main())
