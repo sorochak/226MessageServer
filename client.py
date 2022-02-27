@@ -21,16 +21,23 @@ WAIT = 5
 nextGetKey = ''
 nextPutKey = ''
 
+#
+# PURPOSE:
+# Generates a string of ascii letters and digits of length KEYLENGTH to be used as a random key
+#
+# Return:
+# Returns the randomly generated string
+#
 def getRandKey():
     str = string.ascii_letters + string.digits
     return ''.join(random.choice(str) for i in range(KEYLENGTH))
 
-# async def getUserMsg():
-#     loop = asyncio.get_running_loop()
-#     usrMessage = await loop.run_in_executor(None, input, PROMPT)
-#     return usrMessage
 
-
+#
+# PURPOSE:
+# Async function that polls the server every 5 seconds to see if someone else has deposited a message using the latest key; 
+# if so, the message is displayed and the latest key is updated.
+#
 async def get_message():
     global nextGetKey, nextPutKey
     
@@ -55,6 +62,13 @@ async def get_message():
         message = data[KEYLENGTH:]
         print('             ', '>', message)
 
+        
+#
+# PURPOSE:
+# Async function that sends that message to the server with the latest key; 
+# if someone else already used that key, retries with the key provided by the server 
+# (this last part must be repeated until the message is successfully delivered)
+#
 async def put_message():
     global nextPutKey
 
@@ -89,7 +103,10 @@ async def put_message():
             print('**** Unexpected Error', data)
             break
         
-
+#
+# PURPOSE:
+# Async function that gathers the results of two running coroutines.
+#
 async def main():
     try:
         await asyncio.gather(get_message(), put_message())
