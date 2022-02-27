@@ -5,7 +5,12 @@ In my *Network and Server-Side Programming* course at Camosun College, we implem
 The task for this project was to write a message server and client using the Python asyncio library.
 GitHub Actions were used for automatic testing when pushing the project to a remote repository.
 
-Specified requirements for the client behavior include the following:
+Various debugging strategies were used throughout the development of these networking projects, such as:
+* print out values before or after using them
+* use tcpdump to determine whether the issue is with the client or the server
+* trace through the program to figure out what is happening (using python3 -m trace...)
+
+Specified requirements for the client behavior in this assignment include the following:
 
 1. When launched, the client gets a server IP, a server port, and an initial 8-digit key from the command line
 2. The client then attempts to get a message with the given key from the given server at the given port
