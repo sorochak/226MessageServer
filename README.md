@@ -1,14 +1,20 @@
 # Asynchronous Client/Server using Python
 
+## Introduction
+
 In my *Network and Server-Side Programming* course at Camosun College, we implemented, tested, and deployed client/server programs in a variety of languages and platforms.
 
 The task for this project was to write a message server and client using the Python asyncio library.
 GitHub Actions were used for automatic testing when pushing the project to a remote repository.
 
+## Debugging
+
 Various debugging strategies were used throughout the development of these networking projects, such as:
 * print out values before or after using them
 * use tcpdump to determine whether the issue is with the client or the server
 * trace through the program to figure out what is happening (using python3 -m trace...)
+
+## Requirements
 
 Specified requirements for the client behavior in this assignment include the following:
 
